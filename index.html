@@ -2,111 +2,113 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Live Train Departures Test</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Train Departures Test</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    pre { background: #f4f4f4; padding: 10px; border-radius: 4px; white-space: pre-wrap; }
+    body { font-family: sans-serif; padding: 1rem; }
+    pre { background: #f4f4f4; padding: .5rem; border-radius: 4px; }
     .error { color: red; }
   </style>
 </head>
 <body>
-  <h1>Departures from Nõmme</h1>
-  <div id="currentTime"></div>
+  <h1>Live Trains from Nõmme</h1>
+  <div id="clock"></div>
   <pre id="output">Loading…</pre>
 
   <script>
-    const API_URL = 'https://api.digitransit.fi/routing/v2/finland/gtfs/v1';  
-    // (Digitransit Finland & Estonia GraphQL endpoint) :contentReference[oaicite:0]{index=0}
+    const GRAPHQL_URL = 'https://api.digitransit.fi/routing/v2/finland/gtfs/v1/graphql';  
+    // Routing API for Finland & Estonia :contentReference[oaicite:0]{index=0}  
+    // GraphQL usage docs :contentReference[oaicite:1]{index=1}
 
-    // Show local clock
+    // 1) Clock
     function tick() {
-      const d = new Date();
-      document.getElementById('currentTime').textContent =
-        `Local time: ${d.toLocaleTimeString('et-EE')}`;
+      document.getElementById('clock').textContent =
+        'Local time: ' + new Date().toLocaleTimeString('et-EE');
     }
     setInterval(tick, 1000);
     tick();
 
-    // Helper to POST a query
-    async function gqlFetch(query, vars) {
-      const res = await fetch(API_URL, {
+    // 2) Core fetch helper
+    async function gqlFetch(query, variables, operationName) {
+      const res = await fetch(GRAPHQL_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, variables: vars })
+        body: JSON.stringify({ query, variables, operationName })
       });
       const json = await res.json();
-      console.log('Raw response:', json);
+      console.log('⏎ raw response:', json);
       if (json.errors) throw new Error(json.errors.map(e=>e.message).join('; '));
+      if (!json.data) throw new Error('No data field in response');
       return json.data;
     }
 
-    // 1) Find the GTFS ID for "Nõmme"
-    async function getStopId(name) {
+    // 3) Lookup the GTFS stop ID for “Nõmme”
+    async function getStopId(stopName) {
       const query = `
-        query($q: String!) {
-          stops(name: $q) {
+        query GetStops($stopName: String!) {
+          stops(name: $stopName) {
             gtfsId
             name
           }
         }
       `;
-      const data = await gqlFetch(query, { q: name });
-      if (!data.stops || !data.stops.length) {
-        throw new Error('No stops found for "' + name + '"');
-      }
-      return data.stops[0].gtfsId; 
+      const data = await gqlFetch(query, { stopName }, 'GetStops');
+      if (!data.stops.length) throw new Error('No stops found for ' + stopName);
+      return data.stops[0].gtfsId;
     }
 
-    // 2) Fetch upcoming departures
-    async function fetchDepartures(stopId, count = 10) {
+    // 4) Fetch the next 5 rail departures at or after “now”
+    async function getDepartures(stopId) {
       const query = `
-        query($id: String!, $n: Int!) {
-          stop(id: $id) {
+        query GetStoptimes($stopId: String!, $limit: Int!) {
+          stop(id: $stopId) {
             name
-            stoptimesWithoutPatterns(numberOfDepartures: $n) {
+            stoptimesWithoutPatterns(numberOfDepartures: $limit) {
               scheduledDeparture
               realtimeDeparture
               departureDelay
-              trip { route { mode } }
+              trip {
+                route { mode }
+              }
             }
           }
         }
       `;
-      const data = await gqlFetch(query, { id: stopId, n: count });
-      return data.stop;
+      return await gqlFetch(
+        query,
+        { stopId, limit: 10 },
+        'GetStoptimes'
+      );
     }
 
-    // 3) Format seconds‐since‐midnight to HH:MM
-    function secsToHM(sec) {
-      const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60);
-      return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-    }
-
-    // Orchestrate
+    // 5) Render
     (async () => {
       try {
-        const stopId = await getStopId('Nõmme');                // :contentReference[oaicite:1]{index=1}
-        const stopData = await fetchDepartures(stopId, 20);
+        const stopId = await getStopId('Nõmme');
+        const { name, stoptimesWithoutPatterns } = await getDepartures(stopId);
+
+        // only future rail departures
         const nowSec = new Date().getHours()*3600 + new Date().getMinutes()*60;
-        const upcoming = stopData.stoptimesWithoutPatterns
-          .filter(st => (st.realtimeDeparture || st.scheduledDeparture) >= nowSec)
+        const upcoming = stoptimesWithoutPatterns
           .filter(st => st.trip.route.mode === 'RAIL')
+          .filter(st => (st.realtimeDeparture || st.scheduledDeparture) >= nowSec)
           .slice(0,5)
           .map(st => {
             const sec = st.realtimeDeparture ?? st.scheduledDeparture;
-            const status = st.departureDelay > 0 
-              ? `+${st.departureDelay} min delay` 
+            const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60);
+            const time = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+            const status = st.departureDelay>0
+              ? `+${st.departureDelay} min delay`
               : 'On time';
-            return `${secsToHM(sec)} (${status})`;
+            return `${time}  (${status})`;
           });
 
         document.getElementById('output').textContent =
-          upcoming.length 
-            ? upcoming.join('\n') 
+          upcoming.length
+            ? `Departures from ${name}:\n\n` + upcoming.join('\n')
             : 'No upcoming rail departures found.';
       } catch (e) {
-        document.getElementById('output').textContent = `Error: ${e.message}`;
+        document.getElementById('output').textContent = 'Error: ' + e.message;
         document.getElementById('output').classList.add('error');
         console.error(e);
       }
