@@ -1,0 +1,91 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Train API Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    pre { background:#f4f4f4; padding:10px; border-radius:4px; }
+  </style>
+</head>
+<body>
+  <h1>Digitransit Train Departures Test</h1>
+  <div id="output">Loading...</div>
+
+  <script>
+    const API_URL = 'https://api.digitransit.fi/routing/v2/finland/gtfs/v1/graphql';
+
+    // Step 1: Get GTFS ID for "Nõmme"
+    async function getStopId(name) {
+      const query = `
+        query($q: String!) {
+          stops(name: $q) {
+            gtfsId
+            name
+          }
+        }
+      `;
+      const resp = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, variables: { q: name } })
+      });
+      const json = await resp.json();
+      return json.data.stops[0]?.gtfsId;
+    }
+
+    // Step 2: Fetch upcoming departures
+    async function fetchDepartures(stopId, count = 5) {
+      const query = `
+        query($id: String!, $num: Int!) {
+          stop(id: $id) {
+            name
+            stoptimesWithoutPatterns(numberOfDepartures: $num) {
+              scheduledDeparture
+              realtimeDeparture
+              departureDelay
+              headsign
+              trip { route { mode } }
+            }
+          }
+        }
+      `;
+      const resp = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, variables: { id: stopId, num: count } })
+      });
+      const { data } = await resp.json();
+      return data.stop;
+    }
+
+    // Format seconds to HH:MM
+    function secsToHM(sec) {
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      return h.toString().padStart(2,'0') + ':' + m.toString().padStart(2,'0');
+    }
+
+    // Run test
+    (async () => {
+      const out = document.getElementById('output');
+      try {
+        const stopId = await getStopId('Nõmme');
+        if (!stopId) throw new Error('Stop not found');
+
+        const stopData = await fetchDepartures(stopId);
+        const list = stopData.stoptimesWithoutPatterns.map(st => {
+          const time = secsToHM(st.realtimeDeparture || st.scheduledDeparture);
+          const delay = st.departureDelay;
+          return `${time}  (${delay > 0 ? '+'+delay+' min delay' : 'On time'})`;
+        });
+
+        out.innerHTML = `<h2>Departures from ${stopData.name}</h2>` +
+                        '<pre>' + list.join('\n') + '</pre>';
+      } catch (e) {
+        out.textContent = 'Error: ' + e.message;
+      }
+    })();
+  </script>
+</body>
+</html>
