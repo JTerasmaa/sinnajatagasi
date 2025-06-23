@@ -1,21 +1,47 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Train API Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live Train Departures Test</title>
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; }
-    pre { background:#f4f4f4; padding:10px; border-radius:4px; }
+    pre { background: #f4f4f4; padding: 10px; border-radius: 4px; white-space: pre-wrap; }
+    .error { color: red; }
   </style>
 </head>
 <body>
-  <h1>Digitransit Train Departures Test</h1>
-  <div id="output">Loading...</div>
+  <h1>Departures from Nõmme</h1>
+  <div id="currentTime"></div>
+  <pre id="output">Loading…</pre>
 
   <script>
-    const API_URL = 'https://api.digitransit.fi/routing/v2/finland/gtfs/v1/graphql';
+    const API_URL = 'https://api.digitransit.fi/routing/v2/finland/gtfs/v1';  
+    // (Digitransit Finland & Estonia GraphQL endpoint) :contentReference[oaicite:0]{index=0}
 
-    // Step 1: Get GTFS ID for "Nõmme"
+    // Show local clock
+    function tick() {
+      const d = new Date();
+      document.getElementById('currentTime').textContent =
+        `Local time: ${d.toLocaleTimeString('et-EE')}`;
+    }
+    setInterval(tick, 1000);
+    tick();
+
+    // Helper to POST a query
+    async function gqlFetch(query, vars) {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, variables: vars })
+      });
+      const json = await res.json();
+      console.log('Raw response:', json);
+      if (json.errors) throw new Error(json.errors.map(e=>e.message).join('; '));
+      return json.data;
+    }
+
+    // 1) Find the GTFS ID for "Nõmme"
     async function getStopId(name) {
       const query = `
         query($q: String!) {
@@ -25,65 +51,64 @@
           }
         }
       `;
-      const resp = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, variables: { q: name } })
-      });
-      const json = await resp.json();
-      return json.data.stops[0]?.gtfsId;
+      const data = await gqlFetch(query, { q: name });
+      if (!data.stops || !data.stops.length) {
+        throw new Error('No stops found for "' + name + '"');
+      }
+      return data.stops[0].gtfsId; 
     }
 
-    // Step 2: Fetch upcoming departures
-    async function fetchDepartures(stopId, count = 5) {
+    // 2) Fetch upcoming departures
+    async function fetchDepartures(stopId, count = 10) {
       const query = `
-        query($id: String!, $num: Int!) {
+        query($id: String!, $n: Int!) {
           stop(id: $id) {
             name
-            stoptimesWithoutPatterns(numberOfDepartures: $num) {
+            stoptimesWithoutPatterns(numberOfDepartures: $n) {
               scheduledDeparture
               realtimeDeparture
               departureDelay
-              headsign
               trip { route { mode } }
             }
           }
         }
       `;
-      const resp = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, variables: { id: stopId, num: count } })
-      });
-      const { data } = await resp.json();
+      const data = await gqlFetch(query, { id: stopId, n: count });
       return data.stop;
     }
 
-    // Format seconds to HH:MM
+    // 3) Format seconds‐since‐midnight to HH:MM
     function secsToHM(sec) {
-      const h = Math.floor(sec / 3600);
-      const m = Math.floor((sec % 3600) / 60);
-      return h.toString().padStart(2,'0') + ':' + m.toString().padStart(2,'0');
+      const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60);
+      return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
     }
 
-    // Run test
+    // Orchestrate
     (async () => {
-      const out = document.getElementById('output');
       try {
-        const stopId = await getStopId('Nõmme');
-        if (!stopId) throw new Error('Stop not found');
+        const stopId = await getStopId('Nõmme');                // :contentReference[oaicite:1]{index=1}
+        const stopData = await fetchDepartures(stopId, 20);
+        const nowSec = new Date().getHours()*3600 + new Date().getMinutes()*60;
+        const upcoming = stopData.stoptimesWithoutPatterns
+          .filter(st => (st.realtimeDeparture || st.scheduledDeparture) >= nowSec)
+          .filter(st => st.trip.route.mode === 'RAIL')
+          .slice(0,5)
+          .map(st => {
+            const sec = st.realtimeDeparture ?? st.scheduledDeparture;
+            const status = st.departureDelay > 0 
+              ? `+${st.departureDelay} min delay` 
+              : 'On time';
+            return `${secsToHM(sec)} (${status})`;
+          });
 
-        const stopData = await fetchDepartures(stopId);
-        const list = stopData.stoptimesWithoutPatterns.map(st => {
-          const time = secsToHM(st.realtimeDeparture || st.scheduledDeparture);
-          const delay = st.departureDelay;
-          return `${time}  (${delay > 0 ? '+'+delay+' min delay' : 'On time'})`;
-        });
-
-        out.innerHTML = `<h2>Departures from ${stopData.name}</h2>` +
-                        '<pre>' + list.join('\n') + '</pre>';
+        document.getElementById('output').textContent =
+          upcoming.length 
+            ? upcoming.join('\n') 
+            : 'No upcoming rail departures found.';
       } catch (e) {
-        out.textContent = 'Error: ' + e.message;
+        document.getElementById('output').textContent = `Error: ${e.message}`;
+        document.getElementById('output').classList.add('error');
+        console.error(e);
       }
     })();
   </script>
