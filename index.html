@@ -2,132 +2,219 @@
 <html lang="et">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>🚆 Live Train Departures</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🚆 Sinna ja tagasi</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0 }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      display: flex; flex-direction: column; align-items: center;
-      padding: 2rem; background: #f0f2f5; color: #333;
-    }
-    h1 { margin-bottom: 1rem; }
-    #clock { margin-bottom: 1rem; font-weight: bold; }
-    #output {
-      width: 100%; max-width: 400px;
-      background: white; padding: 1rem; border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      white-space: pre-wrap; font-family: monospace;
-    }
-    .error { color: #c00; }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(135deg,#667eea,#764ba2);color:#333;min-height:100vh;}
+    .container{max-width:600px;margin:0 auto;padding:20px;}
+    .header{text-align:center;margin-bottom:20px;color:white;}
+    .header h1{font-size:2.5rem;text-shadow:2px 2px 4px rgba(0,0,0,0.3);}
+    .current-time{font-size:1.2rem;opacity:.9;margin-top:5px;}
+    .direction-toggle{display:flex;justify-content:center;gap:10px;margin:20px 0;}
+    .toggle-btn{background:rgba(255,255,255,0.2);border:2px solid white;color:white;padding:10px 20px;border-radius:25px;cursor:pointer;font-weight:600;transition:background .3s;}
+    .toggle-btn.active{background:white;color:#667eea;}
+    .paired-section{background:white;border-radius:12px;padding:20px;box-shadow:0 4px 15px rgba(0,0,0,.2);margin-bottom:10px;}
+    .paired-header{display:grid;grid-template-columns:1fr 1fr;align-items:center;margin-bottom:15px;}
+    .paired-header .col{display:flex;align-items:center;gap:8px;}
+    .route-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:1rem;}
+    .train-icon{background:#2196F3;}
+    .tram-icon{background:#FF9800;}
+    .paired-departures{display:grid;gap:12px;}
+    .paired-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    .paired-cell{display:flex;flex-direction:column;gap:6px;}
+    .departure-card{background:#f8f9fa;border-radius:8px;padding:8px;border-left:4px solid #667eea;display:flex;justify-content:space-between;align-items:center;}
+    .departure-card.next-departure{border-left-color:#4CAF50;background:#e8f5e8;}
+    .departure-card.soon{border-left-color:#FF9800;background:#fff3e0;}
+    .departure-time{font-size:1rem;font-weight:bold;color:#2196F3;}
+    .countdown{font-size:.8rem;font-weight:bold;color:#FF9800;}
+    .no-data{flex:1;text-align:center;color:#666;font-style:italic;padding:8px;}
+    .load-more{margin-top:10px;display:block;padding:10px 20px;border:none;border-radius:8px;background:#667eea;color:white;cursor:pointer;}
   </style>
 </head>
 <body>
-  <h1>🚆 Nõmme → Tallinn</h1>
-  <div id="clock">…</div>
-  <div id="output">Loading departures…</div>
-
+  <div class="container">
+    <div class="header">
+      <h1>🚆 Sinna ja tagasi</h1>
+      <div id="currentTime" class="current-time"></div>
+    </div>
+    <div class="direction-toggle">
+      <button id="morningBtn" class="toggle-btn active">🌅 Sinna</button>
+      <button id="eveningBtn" class="toggle-btn">🌆 Tagasi</button>
+    </div>
+    <div class="paired-section" id="pairedSection"></div>
+    <button id="loadMoreBtn" class="load-more">Näita rohkem</button>
+  </div>
   <script>
-    // 📡 Digitransit GraphQL endpoint (Finland & Estonia)
-    const GRAPHQL_URL = 'https://api.digitransit.fi/routing/v2/finland/gtfs/v1';
+    // UTILITIES
+    const pad      = n => n.toString().padStart(2,'0');
+    const isWeekend= () => [0,6].includes(new Date().getDay());
+    const getNowMin= () => { let d=new Date(); return d.getHours()*60 + d.getMinutes(); };
+    let windowDiff=120, windowStep=120, currentDirection='morning';
 
-    // 1) Live clock
-    function updateClock() {
-      const now = new Date();
-      document.getElementById('clock').textContent =
-        'Local time: ' + now.toLocaleTimeString('et-EE');
-    }
-    setInterval(updateClock, 1000);
-    updateClock();
-
-    // 2) Helper to POST a GraphQL query
-    async function gqlFetch(query, variables, operationName) {
-      const resp = await fetch(GRAPHQL_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, variables, operationName })
-      });
-      const json = await resp.json();
-      if (json.errors) {
-        throw new Error(json.errors.map(e => e.message).join('; '));
+    // PLACEHOLDERS (will be overwritten by loadFromHTML)
+    const SCHEDULE_DATA = {
+      tramSchedule: {
+        'Balti Jaam → Tallinna Ülikool': { weekdays:{}, weekends:{} },
+        'Tallinna Ülikool → Balti Jaam': { weekdays:{}, weekends:{} }
+      },
+      trainSchedule: {
+        'Nõmme → Tallinn': { weekdays:[], weekends:[] },
+        'Tallinn → Nõmme': { weekdays:[], weekends:[] }
       }
-      if (!json.data) {
-        throw new Error('No data in response');
-      }
-      return json.data;
-    }
+    };
 
-    // 3) Look up GTFS stop ID for the given name
-    async function getStopId(name) {
-      const query = `
-        query GetStops($q: String!) {
-          stops(name: $q) { gtfsId name }
-        }
-      `;
-      const data = await gqlFetch(query, { q: name }, 'GetStops');
-      if (!data.stops.length) {
-        throw new Error('Stop not found: ' + name);
-      }
-      return data.stops[0].gtfsId;
-    }
-
-    // 4) Fetch upcoming stoptimes
-    async function getDepartures(stopId, limit = 10) {
-      const query = `
-        query GetTimes($id: String!, $n: Int!) {
-          stop(id: $id) {
-            name
-            stoptimesWithoutPatterns(numberOfDepartures: $n) {
-              scheduledDeparture
-              realtimeDeparture
-              departureDelay
-              trip { route { mode } }
-            }
-          }
-        }
-      `;
-      return await gqlFetch(query, { id: stopId, n: limit }, 'GetTimes');
-    }
-
-    // 5) Convert seconds‐since‐midnight to "HH:MM"
-    function secsToHM(sec) {
-      const h = Math.floor(sec / 3600);
-      const m = Math.floor((sec % 3600) / 60);
-      return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-    }
-
-    // 6) Orchestrate everything
-    (async () => {
-      const out = document.getElementById('output');
+    // LIVE LOADER: fetch & parse from your pubhtml sheet
+    const SHEET_URL = 
+      'https://docs.google.com/spreadsheets/d/e/2PACX-1vSwQgRwEgXqYE_zvRMb4j275H9f1eelF2OYWC_4niJmPW1MYsUg2oa9fxA9MFjbgAfs4YzfkiN4OpKL/pubhtml';
+    async function loadFromHTML(){
       try {
-        const stopId = await getStopId('Nõmme');
-        const { name, stoptimesWithoutPatterns } =
-          await getDepartures(stopId, 20);
+        const res = await fetch(SHEET_URL);
+        const txt = await res.text();
+        const doc = new DOMParser().parseFromString(txt,'text/html');
+        const tables = Array.from(doc.querySelectorAll('table.waffle'));
+        const arrays = tables.map(tbl =>
+          Array.from(tbl.querySelectorAll('tbody tr td:nth-child(2)'))
+               .map(td=>td.textContent.trim())
+        );
+        const [
+          tBJ_wknd, tBJ_wkdy,
+          tTLU_wknd, tTLU_wkdy,
+          trN_wkdy, trN_wknd,
+          trBJ_wkdy, trBJ_wknd
+        ] = arrays;
 
-        // filter for rail & departures ≥ now
-        const nowSec = new Date().getHours()*3600 + new Date().getMinutes()*60;
-        const upcoming = stoptimesWithoutPatterns
-          .filter(st => st.trip.route.mode === 'RAIL')
-          .filter(st => (st.realtimeDeparture || st.scheduledDeparture) >= nowSec)
-          .slice(0, 5)
-          .map(st => {
-            const sec = st.realtimeDeparture ?? st.scheduledDeparture;
-            const time = secsToHM(sec);
-            const status = st.departureDelay > 0
-              ? `+${st.departureDelay} min delay`
-              : 'On time';
-            return `${time}  (${status})`;
-          });
+        const buildHourMap = times => times.reduce((m,t)=>{
+          const [h,mn]=t.split(':');
+          (m[h]||(m[h]=[])).push(mn);
+          return m;
+        },{});
 
-        out.textContent = upcoming.length
-          ? `Departures from ${name}:\n\n` + upcoming.join('\n')
-          : 'No upcoming rail departures found.';
-      } catch (err) {
-        out.textContent = 'Error: ' + err.message;
-        out.classList.add('error');
-        console.error(err);
+        // trams
+        SCHEDULE_DATA.tramSchedule['Balti Jaam → Tallinna Ülikool'].weekdays = buildHourMap(tBJ_wkdy);
+        SCHEDULE_DATA.tramSchedule['Balti Jaam → Tallinna Ülikool'].weekends = buildHourMap(tBJ_wknd);
+        SCHEDULE_DATA.tramSchedule['Tallinna Ülikool → Balti Jaam'].weekdays = buildHourMap(tTLU_wkdy);
+        SCHEDULE_DATA.tramSchedule['Tallinna Ülikool → Balti Jaam'].weekends = buildHourMap(tTLU_wknd);
+
+        // trains
+        SCHEDULE_DATA.trainSchedule['Nõmme → Tallinn'].weekdays = trN_wkdy.slice();
+        SCHEDULE_DATA.trainSchedule['Nõmme → Tallinn'].weekends = trN_wknd.slice();
+        SCHEDULE_DATA.trainSchedule['Tallinn → Nõmme'].weekdays = trBJ_wkdy.slice();
+        SCHEDULE_DATA.trainSchedule['Tallinn → Nõmme'].weekends = trBJ_wknd.slice();
+
+        render();
+      } catch(e){
+        console.warn('Could not load sheet:', e);
       }
-    })();
+    }
+    loadFromHTML();
+    setInterval(loadFromHTML, 5*60*1000);
+
+    // CORE LOGIC
+    function getStaticTimes(id){
+      if(id.startsWith('tram')){
+        const key = id==='tram-morning'
+          ? 'Balti Jaam → Tallinna Ülikool'
+          : 'Tallinna Ülikool → Balti Jaam';
+        const blk = SCHEDULE_DATA.tramSchedule[key];
+        const period = isWeekend() ? blk.weekends : blk.weekdays;
+        return Object.entries(period)
+          .flatMap(([h,mins])=>mins.map(m=>`${pad(h)}:${pad(m)}`))
+          .sort();
+      } else {
+        const key = id==='train-morning'
+          ? 'Nõmme → Tallinn'
+          : 'Tallinn → Nõmme';
+        const blk = SCHEDULE_DATA.trainSchedule[key];
+        const list = isWeekend() ? blk.weekends : blk.weekdays;
+        return list.slice().sort();
+      }
+    }
+
+    function generateUpcoming(id){
+      const times = getStaticTimes(id), now = getNowMin();
+      return times.map(t=>{
+        const [h,m] = t.split(':').map(Number);
+        let mins = h*60 + m;
+        if(mins < now) mins += 1440;
+        return { time:t, diff:mins-now };
+      })
+      .filter(x=>x.diff<=windowDiff)
+      .sort((a,b)=>a.diff-b.diff);
+    }
+
+    function pairDepartures(pId,sId,offset){
+      const prim = generateUpcoming(pId), sec = generateUpcoming(sId);
+      return prim.map((p,i)=>{
+        const nxt = prim[i+1]?.diff || Infinity;
+        const start = p.diff + offset, end = nxt + offset;
+        return { primary:p, secondary:sec.filter(s=>s.diff>=start&&s.diff<end) };
+      });
+    }
+
+    function formatCard(item,routeId){
+      if(!item?.time) return '<div class="no-data">—</div>';
+      const cls = ['departure-card'];
+      if(item.diff <= 5) cls.push('soon');
+      // next departure highlight
+      if(item.time === generateUpcoming(routeId)[0]?.time) cls.push('next-departure');
+      return `<div class="${cls.join(' ')}">
+        <span class="departure-time">${item.time}</span>
+        <span class="countdown">${item.diff} min</span>
+      </div>`;
+    }
+
+    function render(){
+      const cont = document.getElementById('pairedSection');
+      const morning = currentDirection==='morning';
+      const pId = morning?'train-morning':'tram-evening';
+      const sId = morning?'tram-morning':'train-evening';
+      const rows = pairDepartures(pId,sId,12);
+      let html = `<div class="paired-header">
+        <div class="col">
+          ${morning?'<div class="route-icon train-icon">🚆</div>':'<div class="route-icon tram-icon">1</div>'}
+          <h3>${morning?'Rong':'Tramm'}</h3>
+        </div>
+        <div class="col">
+          ${morning?'<div class="route-icon tram-icon">1</div>':'<div class="route-icon train-icon">🚆</div>'}
+          <h3>${morning?'Tramm':'Rong'}</h3>
+        </div>
+      </div><div class="paired-departures">`;
+      rows.forEach(r=>{
+        html += '<div class="paired-row">';
+        html += `<div class="paired-cell">${formatCard(r.primary,pId)}</div>`;
+        html += `<div class="paired-cell">${
+          r.secondary.length
+            ? r.secondary.map(s=>formatCard(s,sId)).join('')
+            : '<div class="no-data">—</div>'
+        }</div>`;
+        html += '</div>';
+      });
+      html += '</div>';
+      cont.innerHTML = html;
+    }
+
+    // EVENT HANDLERS
+    document.getElementById('morningBtn').onclick = ()=>{
+      currentDirection='morning'; windowDiff=windowStep; render();
+      morningBtn.classList.add('active'); eveningBtn.classList.remove('active');
+    };
+    document.getElementById('eveningBtn').onclick = ()=>{
+      currentDirection='evening'; windowDiff=windowStep; render();
+      eveningBtn.classList.add('active'); morningBtn.classList.remove('active');
+    };
+    document.getElementById('loadMoreBtn').onclick = ()=>{
+      windowDiff += windowStep; render();
+    };
+
+    // CLOCK
+    setInterval(()=>{
+      document.getElementById('currentTime').textContent =
+        new Date().toLocaleTimeString('et-EE',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    },1000);
+
+    // INITIAL RENDER
+    render();
   </script>
 </body>
 </html>
