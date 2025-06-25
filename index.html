@@ -6,30 +6,42 @@
   <title>🚆 Sinna ja tagasi</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(135deg,#667eea,#764ba2);color:#333;min-height:100vh;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+         background:linear-gradient(135deg,#667eea,#764ba2);color:#333;min-height:100vh;}
     .container{max-width:600px;margin:0 auto;padding:20px;}
     .header{text-align:center;margin-bottom:20px;color:white;}
     .header h1{font-size:2.5rem;text-shadow:2px 2px 4px rgba(0,0,0,0.3);}
     .current-time{font-size:1.2rem;opacity:.9;margin-top:5px;}
     .direction-toggle{display:flex;justify-content:center;gap:10px;margin:20px 0;}
-    .toggle-btn{background:rgba(255,255,255,0.2);border:2px solid white;color:white;padding:10px 20px;border-radius:25px;cursor:pointer;font-weight:600;transition:background .3s;}
+    .toggle-btn{background:rgba(255,255,255,0.2);border:2px solid white;color:white;
+                padding:10px 20px;border-radius:25px;cursor:pointer;font-weight:600;
+                transition:background .3s;}
     .toggle-btn.active{background:white;color:#667eea;}
-    .paired-section{background:white;border-radius:12px;padding:20px;box-shadow:0 4px 15px rgba(0,0,0,.2);margin-bottom:10px;}
-    .paired-header{display:grid;grid-template-columns:1fr 1fr;align-items:center;margin-bottom:15px;}
+    .paired-section{background:white;border-radius:12px;padding:20px;
+                    box-shadow:0 4px 15px rgba(0,0,0,.2);margin-bottom:10px;}
+    .paired-header{display:grid;grid-template-columns:1fr 1fr;align-items:center;
+                   margin-bottom:15px;}
     .paired-header .col{display:flex;align-items:center;gap:8px;}
-    .route-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:1rem;}
+    .route-icon{width:28px;height:28px;border-radius:50%;display:flex;
+                align-items:center;justify-content:center;color:white;font-size:1rem;}
     .train-icon{background:#2196F3;}
     .tram-icon{background:#FF9800;}
     .paired-departures{display:grid;gap:12px;}
     .paired-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
     .paired-cell{display:flex;flex-direction:column;gap:6px;}
-    .departure-card{background:#f8f9fa;border-radius:8px;padding:8px;border-left:4px solid #667eea;display:flex;justify-content:space-between;align-items:center;}
+    .departure-card{background:#f8f9fa;border-radius:8px;padding:8px;
+                    border-left:4px solid #667eea;display:flex;
+                    justify-content:space-between;align-items:center;}
     .departure-card.next-departure{border-left-color:#4CAF50;background:#e8f5e8;}
     .departure-card.soon{border-left-color:#FF9800;background:#fff3e0;}
     .departure-time{font-size:1rem;font-weight:bold;color:#2196F3;}
     .countdown{font-size:.8rem;font-weight:bold;color:#FF9800;}
     .no-data{flex:1;text-align:center;color:#666;font-style:italic;padding:8px;}
-    .load-more{margin-top:10px;display:block;padding:10px 20px;border:none;border-radius:8px;background:#667eea;color:white;cursor:pointer;}
+    .load-more, .update-btn{margin-top:10px;display:inline-block;
+                            padding:10px 20px;border:none;border-radius:8px;
+                            background:#667eea;color:white;cursor:pointer;}
+    .update-btn{margin-left:10px;}
+    .load-more:disabled, .update-btn:disabled{opacity:.6;cursor:default;}
   </style>
 </head>
 <body>
@@ -44,15 +56,17 @@
     </div>
     <div class="paired-section" id="pairedSection"></div>
     <button id="loadMoreBtn" class="load-more">Näita rohkem</button>
+    <button id="updateBtn" class="update-btn">Uuenda väljumised</button>
   </div>
+
   <script>
-    // UTILITIES
-    const pad      = n => n.toString().padStart(2,'0');
-    const isWeekend= () => [0,6].includes(new Date().getDay());
-    const getNowMin= () => { let d=new Date(); return d.getHours()*60 + d.getMinutes(); };
+    // ── UTILS & STATE ───────────────────────────────────────────────────────
+    const pad       = n=>n.toString().padStart(2,'0');
+    const isWeekend = ()=>[0,6].includes(new Date().getDay());
+    const getNowMin = ()=> { const d=new Date(); return d.getHours()*60 + d.getMinutes(); };
     let windowDiff=120, windowStep=120, currentDirection='morning';
 
-    // PLACEHOLDERS (will be overwritten by loadFromHTML)
+    // initial placeholders
     const SCHEDULE_DATA = {
       tramSchedule: {
         'Balti Jaam → Tallinna Ülikool': { weekdays:{}, weekends:{} },
@@ -64,55 +78,88 @@
       }
     };
 
-    // LIVE LOADER: fetch & parse from your pubhtml sheet
-    const SHEET_URL = 
-      'https://docs.google.com/spreadsheets/d/e/2PACX-1vSwQgRwEgXqYE_zvRMb4j275H9f1eelF2OYWC_4niJmPW1MYsUg2oa9fxA9MFjbgAfs4YzfkiN4OpKL/pubhtml';
-    async function loadFromHTML(){
-      try {
-        const res = await fetch(SHEET_URL);
-        const txt = await res.text();
-        const doc = new DOMParser().parseFromString(txt,'text/html');
-        const tables = Array.from(doc.querySelectorAll('table.waffle'));
-        const arrays = tables.map(tbl =>
-          Array.from(tbl.querySelectorAll('tbody tr td:nth-child(2)'))
-               .map(td=>td.textContent.trim())
-        );
-        const [
-          tBJ_wknd, tBJ_wkdy,
-          tTLU_wknd, tTLU_wkdy,
-          trN_wkdy, trN_wknd,
-          trBJ_wkdy, trBJ_wknd
-        ] = arrays;
+    // ── SHEETS API CONFIG ─────────────────────────────────────────────────
+    const SPREADSHEET_ID = '1xawYwxhTXUKDulx5TafuCqo2c7exE2nQrxHNQg7rWuY';
+    const API_KEY        = 'AIzaSyDtDaOpNgypZLc7UxVYT0r22xeXW3VQIRc';
 
-        const buildHourMap = times => times.reduce((m,t)=>{
-          const [h,mn]=t.split(':');
-          (m[h]||(m[h]=[])).push(mn);
-          return m;
-        },{});
+    const RANGES = {
+      t_m_wkdy: 'Tram_BJ-TLU_Weekdays!A2:A150',
+      t_m_wknd: 'Tram_BJ-TLU_Weekends!A2:A150',
+      t_e_wkdy: 'Tram_TLU-BJ_Weekdays!A2:A150',
+      t_e_wknd: 'Tram_TLU-BJ_Weekends!A2:A150',
+      r_m_wkdy: 'Train_N-BJ_Weekdays!A2:A150',
+      r_m_wknd: 'Train_N-BJ_Weekends!A2:A150',
+      r_e_wkdy: 'Train_BJ-N_Weekdays!A2:A150',
+      r_e_wknd: 'Train_BJ-N_Weekends!A2:A150',
+    };
+
+    // fetch a single A1 range via Sheets API
+    async function fetchRange(range) {
+      const url =
+        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}` +
+        `/values/${encodeURIComponent(range)}?key=${API_KEY}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(await res.text());
+      const json = await res.json();
+      return (json.values || []).flat();
+    }
+
+    // ── LOAD & UPDATE ──────────────────────────────────────────────────────
+    async function loadFromSheetsAPI() {
+      const btn = document.getElementById('updateBtn');
+      btn.disabled = true;
+      btn.textContent = 'Värskendan…';
+
+      try {
+        const keys   = Object.keys(RANGES);
+        const ranges = Object.values(RANGES);
+        const data   = await Promise.all(ranges.map(r=>fetchRange(r).catch(_=>[])));
+
+        const [
+          t_m_wkdy, t_m_wknd, t_e_wkdy, t_e_wknd,
+          r_m_wkdy, r_m_wknd, r_e_wkdy, r_e_wknd
+        ] = data;
+
+        const buildHourMap = times =>
+          times.reduce((m,t)=>{
+            const [h,mn] = t.split(':');
+            (m[h]||(m[h]=[])).push(mn);
+            return m;
+          },{});
 
         // trams
-        SCHEDULE_DATA.tramSchedule['Balti Jaam → Tallinna Ülikool'].weekdays = buildHourMap(tBJ_wkdy);
-        SCHEDULE_DATA.tramSchedule['Balti Jaam → Tallinna Ülikool'].weekends = buildHourMap(tBJ_wknd);
-        SCHEDULE_DATA.tramSchedule['Tallinna Ülikool → Balti Jaam'].weekdays = buildHourMap(tTLU_wkdy);
-        SCHEDULE_DATA.tramSchedule['Tallinna Ülikool → Balti Jaam'].weekends = buildHourMap(tTLU_wknd);
+        SCHEDULE_DATA.tramSchedule['Balti Jaam → Tallinna Ülikool'] = {
+          weekdays: buildHourMap(t_m_wkdy),
+          weekends: buildHourMap(t_m_wknd)
+        };
+        SCHEDULE_DATA.tramSchedule['Tallinna Ülikool → Balti Jaam'] = {
+          weekdays: buildHourMap(t_e_wkdy),
+          weekends: buildHourMap(t_e_wknd)
+        };
 
         // trains
-        SCHEDULE_DATA.trainSchedule['Nõmme → Tallinn'].weekdays = trN_wkdy.slice();
-        SCHEDULE_DATA.trainSchedule['Nõmme → Tallinn'].weekends = trN_wknd.slice();
-        SCHEDULE_DATA.trainSchedule['Tallinn → Nõmme'].weekdays = trBJ_wkdy.slice();
-        SCHEDULE_DATA.trainSchedule['Tallinn → Nõmme'].weekends = trBJ_wknd.slice();
+        SCHEDULE_DATA.trainSchedule['Nõmme → Tallinn']   = { weekdays: r_m_wkdy, weekends: r_m_wknd };
+        SCHEDULE_DATA.trainSchedule['Tallinn → Nõmme']   = { weekdays: r_e_wkdy, weekends: r_e_wknd };
 
         render();
-      } catch(e){
-        console.warn('Could not load sheet:', e);
+        btn.textContent = 'Uuendatud ✅';
+      } catch(err) {
+        console.error(err);
+        btn.textContent = 'Viga, proovi uuesti';
+      } finally {
+        setTimeout(()=>{
+          btn.disabled = false;
+          btn.textContent = 'Uuenda väljumised';
+        }, 2000);
       }
     }
-    loadFromHTML();
-    setInterval(loadFromHTML, 5*60*1000);
 
-    // CORE LOGIC
+    document.getElementById('updateBtn').onclick = loadFromSheetsAPI;
+    loadFromSheetsAPI();  // initial fetch
+
+    // ── RENDERING LOGIC ────────────────────────────────────────────────────
     function getStaticTimes(id){
-      if(id.startsWith('tram')){
+      if (id.startsWith('tram')) {
         const key = id==='tram-morning'
           ? 'Balti Jaam → Tallinna Ülikool'
           : 'Tallinna Ülikool → Balti Jaam';
@@ -132,32 +179,30 @@
     }
 
     function generateUpcoming(id){
-      const times = getStaticTimes(id), now = getNowMin();
+      const times = getStaticTimes(id), now=getNowMin();
       return times.map(t=>{
-        const [h,m] = t.split(':').map(Number);
-        let mins = h*60 + m;
-        if(mins < now) mins += 1440;
-        return { time:t, diff:mins-now };
+        const [h,m]=t.split(':').map(Number);
+        let mins = h*60 + m; if(mins<now) mins+=1440;
+        return {time:t,diff:mins-now};
       })
       .filter(x=>x.diff<=windowDiff)
       .sort((a,b)=>a.diff-b.diff);
     }
 
     function pairDepartures(pId,sId,offset){
-      const prim = generateUpcoming(pId), sec = generateUpcoming(sId);
+      const prim=generateUpcoming(pId), sec=generateUpcoming(sId);
       return prim.map((p,i)=>{
-        const nxt = prim[i+1]?.diff || Infinity;
-        const start = p.diff + offset, end = nxt + offset;
-        return { primary:p, secondary:sec.filter(s=>s.diff>=start&&s.diff<end) };
+        const nxt=prim[i+1]?.diff||Infinity;
+        const start=p.diff+offset, end=nxt+offset;
+        return {primary:p,secondary:sec.filter(x=>x.diff>=start&&x.diff<end)};
       });
     }
 
     function formatCard(item,routeId){
       if(!item?.time) return '<div class="no-data">—</div>';
-      const cls = ['departure-card'];
-      if(item.diff <= 5) cls.push('soon');
-      // next departure highlight
-      if(item.time === generateUpcoming(routeId)[0]?.time) cls.push('next-departure');
+      const cls=['departure-card'];
+      if(item.diff<=5) cls.push('soon');
+      if(item.time===generateUpcoming(routeId)[0]?.time) cls.push('next-departure');
       return `<div class="${cls.join(' ')}">
         <span class="departure-time">${item.time}</span>
         <span class="countdown">${item.diff} min</span>
@@ -165,22 +210,22 @@
     }
 
     function render(){
-      const cont = document.getElementById('pairedSection');
+      const cont=document.getElementById('pairedSection');
       const morning = currentDirection==='morning';
       const pId = morning?'train-morning':'tram-evening';
       const sId = morning?'tram-morning':'train-evening';
       const rows = pairDepartures(pId,sId,12);
-      let html = `<div class="paired-header">
-        <div class="col">
-          ${morning?'<div class="route-icon train-icon">🚆</div>':'<div class="route-icon tram-icon">1</div>'}
+
+      let html=`<div class="paired-header">
+        <div class="col">${morning?'<div class="route-icon train-icon">🚆</div>':'<div class="route-icon tram-icon">1</div>'}
           <h3>${morning?'Rong':'Tramm'}</h3>
         </div>
-        <div class="col">
-          ${morning?'<div class="route-icon tram-icon">1</div>':'<div class="route-icon train-icon">🚆</div>'}
+        <div class="col">${morning?'<div class="route-icon tram-icon">1</div>':'<div class="route-icon train-icon">🚆</div>'}
           <h3>${morning?'Tramm':'Rong'}</h3>
         </div>
       </div><div class="paired-departures">`;
-      rows.forEach(r=>{
+
+      rows.forEach(r=> {
         html += '<div class="paired-row">';
         html += `<div class="paired-cell">${formatCard(r.primary,pId)}</div>`;
         html += `<div class="paired-cell">${
@@ -190,11 +235,12 @@
         }</div>`;
         html += '</div>';
       });
+
       html += '</div>';
       cont.innerHTML = html;
     }
 
-    // EVENT HANDLERS
+    // toggles
     document.getElementById('morningBtn').onclick = ()=>{
       currentDirection='morning'; windowDiff=windowStep; render();
       morningBtn.classList.add('active'); eveningBtn.classList.remove('active');
@@ -204,16 +250,16 @@
       eveningBtn.classList.add('active'); morningBtn.classList.remove('active');
     };
     document.getElementById('loadMoreBtn').onclick = ()=>{
-      windowDiff += windowStep; render();
+      windowDiff+=windowStep; render();
     };
 
-    // CLOCK
+    // clock
     setInterval(()=>{
       document.getElementById('currentTime').textContent =
         new Date().toLocaleTimeString('et-EE',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
     },1000);
 
-    // INITIAL RENDER
+    // initial render
     render();
   </script>
 </body>
