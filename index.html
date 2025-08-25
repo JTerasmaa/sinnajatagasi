@@ -1,79 +1,138 @@
 <!DOCTYPE html>
 <html lang="et">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SINNA & TAGASI</title>
 
-    <!-- FAVICON: inline SVG using the 🚆 emoji -->
+  <!-- FAVICON: inline SVG using the 🚆 emoji -->
   <link rel="icon" type="image/svg+xml"
     href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Ctext%20x='50%25'%20y='50%25'%20font-size='48'%20text-anchor='middle'%20dominant-baseline='central'%3E🚆%3C/text%3E%3C/svg%3E">
-
-  <!-- fallback .ico for older browsers -->
   <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
-  
-  
+
   <style>
+    :root{
+      --bg1:#667eea; --bg2:#764ba2;
+      --ink:#222; --ink-muted:#555;
+      --card:#f8f9fa; --shadow:0 4px 15px rgba(0,0,0,.2);
+      --accent:#667eea; --ok:#4CAF50; --warn:#FF9800; --rail:#2196F3;
+    }
+    @media (prefers-color-scheme: dark){
+      :root{
+        --ink:#e9e9e9; --ink-muted:#bbb;
+        --card:#1f2430; --shadow:0 6px 18px rgba(0,0,0,.4);
+      }
+    }
     *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-         background:linear-gradient(135deg,#667eea,#764ba2);color:#333;min-height:100vh;}
-    .container{max-width:600px;margin:0 auto;padding:20px;}
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
+      background:linear-gradient(135deg,var(--bg1),var(--bg2));
+      color:var(--ink);
+      min-height:100vh;
+    }
+    .container{max-width:700px;margin:0 auto;padding:20px;}
     .header{text-align:center;margin-bottom:20px;color:white;}
-    .header h1{font-size:2.5rem;text-shadow:2px 2px 4px rgba(0,0,0,0.3);}
-    .current-time{font-size:1.2rem;opacity:.9;margin-top:5px;}
+    .header h1{font-size:2.4rem;text-shadow:2px 2px 4px rgba(0,0,0,0.3);}
+    .current-time{font-size:1.1rem;opacity:.9;margin-top:5px;}
+
     .direction-toggle{display:flex;justify-content:center;gap:10px;margin:20px 0;}
-    .toggle-btn{background:rgba(255,255,255,0.2);border:2px solid white;color:white;
-                padding:10px 20px;border-radius:25px;cursor:pointer;font-weight:600;
-                transition:background .3s;}
-    .toggle-btn.active{background:white;color:#667eea;}
+    .toggle-btn{
+      background:rgba(255,255,255,0.2);
+      border:2px solid white;color:white;
+      padding:10px 20px;border-radius:25px;cursor:pointer;font-weight:600;
+      transition:background .2s, transform .05s;
+    }
+    .toggle-btn:active{ transform: scale(.98); }
+    .toggle-btn.active{background:white;color:var(--bg1); outline: none;}
+    .toggle-btn[aria-disabled="true"]{opacity:.6;cursor:default;}
+
     .paired-section{background:white;border-radius:12px;padding:20px;
-                    box-shadow:0 4px 15px rgba(0,0,0,.2);margin-bottom:10px;}
+                    box-shadow:var(--shadow);margin-bottom:10px;}
     .paired-header{display:grid;grid-template-columns:1fr 1fr;align-items:center;
-                   margin-bottom:15px;}
+                   margin-bottom:15px;gap:12px;}
     .paired-header .col{display:flex;align-items:center;gap:8px;}
     .route-icon{width:28px;height:28px;border-radius:50%;display:flex;
                 align-items:center;justify-content:center;color:white;font-size:1rem;}
-    .train-icon{background:#2196F3;}
-    .tram-icon{background:#FF9800;}
+    .train-icon{background:var(--rail);}
+    .tram-icon{background:var(--warn);}
+
     .paired-departures{display:grid;gap:12px;}
     .paired-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
     .paired-cell{display:flex;flex-direction:column;gap:6px;}
-    .departure-card{background:#f8f9fa;border-radius:8px;padding:8px;
-                    border-left:4px solid #667eea;display:flex;
-                    justify-content:space-between;align-items:center;}
-    .departure-card.next-departure{border-left-color:#4CAF50;background:#e8f5e8;}
-    .departure-card.soon{border-left-color:#FF9800;background:#fff3e0;}
-    .departure-time{font-size:1rem;font-weight:bold;color:#2196F3;}
-    .countdown{font-size:.8rem;font-weight:bold;color:#FF9800;}
-    .no-data{flex:1;text-align:center;color:#666;font-style:italic;padding:8px;}
-    .load-more, .update-btn{margin-top:10px;display:inline-block;
-                            padding:10px 20px;border:none;border-radius:8px;
-                            background:#667eea;color:white;cursor:pointer;}
-    .update-btn{margin-left:10px;}
-    .load-more:disabled, .update-btn:disabled{opacity:.6;cursor:default;}
+    .departure-card{
+      background:var(--card);border-radius:8px;padding:8px;
+      border-left:4px solid var(--accent);display:flex;
+      justify-content:space-between;align-items:center;
+      min-height:40px;
+    }
+    .departure-card.next-departure{border-left-color:var(--ok);background:rgba(76,175,80,.12);}
+    .departure-card.soon{border-left-color:var(--warn);background:rgba(255,152,0,.12);}
+    .departure-time{font-size:1rem;font-weight:700;color:var(--rail);display:flex;align-items:center;gap:6px;}
+    .countdown{font-size:.85rem;font-weight:700;color:var(--warn);}
+    .no-data{flex:1;text-align:center;color:var(--ink-muted);font-style:italic;padding:8px;}
+
+    .day-chip{
+      font-size:.7rem; padding:2px 6px; border-radius:6px;
+      background:rgba(102,126,234,.15); color:var(--accent); font-weight:600;
+      line-height:1.2;
+    }
+
+    .btnbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;}
+    .load-more, .update-btn{
+      display:inline-block; padding:10px 16px; border:none; border-radius:8px;
+      background:var(--accent); color:white; cursor:pointer; font-weight:600;
+    }
+    .load-more[disabled], .update-btn[disabled]{opacity:.6;cursor:default}
+    .meta{color:white;opacity:.85;font-size:.9rem;margin-top:6px;text-align:center;}
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <h1>SINNA & TAGASI</h1>
-      <div id="currentTime" class="current-time"></div>
+    <div class="header" role="banner">
+      <h1>SINNA &amp; TAGASI</h1>
+      <div id="currentTime" class="current-time" aria-live="polite"></div>
     </div>
-    <div class="direction-toggle">
-      <button id="morningBtn" class="toggle-btn active">🌅 Sinna</button>
-      <button id="eveningBtn" class="toggle-btn">🌆 Tagasi</button>
+
+    <div class="direction-toggle" role="tablist" aria-label="Suunavalik">
+      <button id="morningBtn" type="button" class="toggle-btn active" role="tab" aria-selected="true" aria-controls="pairedSection">🌅 Sinna</button>
+      <button id="eveningBtn" type="button" class="toggle-btn" role="tab" aria-selected="false" aria-controls="pairedSection">🌆 Tagasi</button>
     </div>
-    <div class="paired-section" id="pairedSection"></div>
-    <button id="loadMoreBtn" class="load-more">Näita rohkem</button>
-    <button id="updateBtn" class="update-btn">Uuenda väljumised</button>
+
+    <div class="paired-section" id="pairedSection" aria-live="polite"></div>
+
+    <div class="btnbar">
+      <button id="loadMoreBtn" type="button" class="load-more">Näita rohkem (+2 h)</button>
+      <button id="updateBtn" type="button" class="update-btn">Uuenda väljumised</button>
+    </div>
+    <div id="meta" class="meta" aria-live="polite"></div>
   </div>
 
   <script>
     // ── UTILS & STATE ───────────────────────────────────────────────────────
-    const pad       = n=>n.toString().padStart(2,'0');
-    const isWeekend = ()=>[0,6].includes(new Date().getDay());
-    const getNowMin = ()=> { const d=new Date(); return d.getHours()*60 + d.getMinutes(); };
-    let windowDiff=120, windowStep=120, currentDirection='morning';
+    const pad = n => n.toString().padStart(2,'0');
+    const getNowMin = () => { const d=new Date(); return d.getHours()*60 + d.getMinutes(); };
+    const isWeekend = () => [0,6].includes(new Date().getDay()); // tänane
+    const isWeekendDay = d => d===0 || d===6; // suvalise päeva jaoks
+
+    // HM utils
+    const toHM = s => { const [h,m]=(s||'').split(':').map(Number); return [h||0,m||0]; };
+    const hmToStr = (h,m) => `${pad(h)}:${pad(m)}`;
+    const hmToMin = ([h,m]) => h*60 + m;
+
+    let state = {
+      windowDiff: 120,      // mitu minutit ette näitame
+      windowStep: 120,      // +2h samm
+      currentDirection: 'morning', // 'morning' | 'evening'
+      transferOffsetMin: 12
+    };
+
+    // DOM
+    const morningBtn = document.getElementById('morningBtn');
+    const eveningBtn = document.getElementById('eveningBtn');
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+    const updateBtn   = document.getElementById('updateBtn');
+    const pairedSection = document.getElementById('pairedSection');
+    const metaEl = document.getElementById('meta');
 
     // initial placeholders
     const SCHEDULE_DATA = {
@@ -102,41 +161,51 @@
       r_e_wknd: 'Train_BJ-N_Weekends!A2:A150',
     };
 
-    // fetch a single A1 range via Sheets API
-    async function fetchRange(range) {
-      const url =
-        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}` +
-        `/values/${encodeURIComponent(range)}?key=${API_KEY}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(await res.text());
-      const json = await res.json();
-      return (json.values || []).flat();
+    // ── CACHE ──────────────────────────────────────────────────────────────
+    const CACHE_KEY = 'sinna-tagasi-schedule-v1';
+    function saveCache(){
+      try{ localStorage.setItem(CACHE_KEY, JSON.stringify(SCHEDULE_DATA)); }catch(_){}
+    }
+    function loadCache(){
+      try{
+        const raw = localStorage.getItem(CACHE_KEY);
+        if(!raw) return false;
+        Object.assign(SCHEDULE_DATA, JSON.parse(raw));
+        return true;
+      }catch(_){ return false; }
     }
 
-    // ── LOAD & UPDATE ──────────────────────────────────────────────────────
+    // ── LOAD & UPDATE (batchGet + robust parsing) ──────────────────────────
     async function loadFromSheetsAPI() {
-      const btn = document.getElementById('updateBtn');
-      btn.disabled = true;
-      btn.textContent = 'Värskendan…';
+      const prevUpdateText = updateBtn.textContent;
+      updateBtn.disabled = true; updateBtn.setAttribute('aria-disabled','true');
+      loadMoreBtn.disabled = true; loadMoreBtn.setAttribute('aria-disabled','true');
+      updateBtn.textContent = 'Värskendan…';
+      metaEl.textContent = 'Laen graafikut Google Sheetsist…';
 
       try {
-        const keys   = Object.keys(RANGES);
-        const ranges = Object.values(RANGES);
-        const data   = await Promise.all(ranges.map(r=>fetchRange(r).catch(_=>[])));
+        const rangesParam = Object.values(RANGES).map(r => `ranges=${encodeURIComponent(r)}`).join('&');
+        const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchGet?${rangesParam}&key=${API_KEY}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(await res.text());
+        const json = await res.json();
+        const vals = (json.valueRanges || []).map(v => (v.values || []).flat());
 
         const [
           t_m_wkdy, t_m_wknd, t_e_wkdy, t_e_wknd,
           r_m_wkdy, r_m_wknd, r_e_wkdy, r_e_wknd
-        ] = data;
+        ] = vals;
 
-        const buildHourMap = times =>
+        const buildHourMap = (times=[]) =>
           times.reduce((m,t)=>{
-            const [h,mn] = t.split(':');
-            (m[h]||(m[h]=[])).push(mn);
+            const [h,mn] = String(t).split(':');
+            const hh = String(Number(h||0));
+            const mm = pad(Number(mn||0));
+            (m[hh]||(m[hh]=[])).push(mm);
             return m;
           },{});
 
-        // trams
+        // trammid (grupeeritud tunnipõhiselt)
         SCHEDULE_DATA.tramSchedule['Balti Jaam → Tallinna Ülikool'] = {
           weekdays: buildHourMap(t_m_wkdy),
           weekends: buildHourMap(t_m_wknd)
@@ -146,84 +215,136 @@
           weekends: buildHourMap(t_e_wknd)
         };
 
-        // trains
-        SCHEDULE_DATA.trainSchedule['Nõmme → Tallinn']   = { weekdays: r_m_wkdy, weekends: r_m_wknd };
-        SCHEDULE_DATA.trainSchedule['Tallinn → Nõmme']   = { weekdays: r_e_wkdy, weekends: r_e_wknd };
+        // rongid (täisnimekirjad)
+        const normalizeTimes = (list=[]) =>
+          list
+            .map(s => {
+              const [h,m] = toHM(String(s));
+              return hmToStr(h,m);
+            })
+            .sort((a,b)=>hmToMin(toHM(a))-hmToMin(toHM(b)));
 
-        render();
-        btn.textContent = 'Uuendatud ✅';
+        SCHEDULE_DATA.trainSchedule['Nõmme → Tallinn'] = {
+          weekdays: normalizeTimes(r_m_wkdy),
+          weekends: normalizeTimes(r_m_wknd)
+        };
+        SCHEDULE_DATA.trainSchedule['Tallinn → Nõmme'] = {
+          weekdays: normalizeTimes(r_e_wkdy),
+          weekends: normalizeTimes(r_e_wknd)
+        };
+
+        saveCache();
+        render(); // värskenda vaadet
+        updateBtn.textContent = 'Uuendatud ✅';
+        metaEl.textContent = 'Graafik edukalt värskendatud.';
       } catch(err) {
         console.error(err);
-        btn.textContent = 'Viga, proovi uuesti';
+        updateBtn.textContent = 'Viga, proovi uuesti';
+        metaEl.textContent = 'Viga andmete laadimisel. Kasutan viimast vahemälus olevat graafikut (kui olemas).';
       } finally {
         setTimeout(()=>{
-          btn.disabled = false;
-          btn.textContent = 'Uuenda väljumised';
-        }, 2000);
+          updateBtn.disabled = false; updateBtn.removeAttribute('aria-disabled');
+          loadMoreBtn.disabled = false; loadMoreBtn.removeAttribute('aria-disabled');
+          updateBtn.textContent = 'Uuenda väljumised';
+        }, 1800);
       }
     }
 
-    document.getElementById('updateBtn').onclick = loadFromSheetsAPI;
-    loadFromSheetsAPI();  // initial fetch
+    // ── DAY-AWARE TIME FETCH PER DAY ───────────────────────────────────────
+    // tagastab minutid 0..1439, sorteeritult konkreetse päeva tüübi järgi
+    function getTimesForDay(routeId, dayIndex){
+      const weekend = isWeekendDay(dayIndex);
 
-    // ── RENDERING LOGIC ────────────────────────────────────────────────────
-    function getStaticTimes(id){
-      if (id.startsWith('tram')) {
-        const key = id==='tram-morning'
+      if (routeId.startsWith('tram')) {
+        const key = routeId==='tram-morning'
           ? 'Balti Jaam → Tallinna Ülikool'
           : 'Tallinna Ülikool → Balti Jaam';
-        const blk = SCHEDULE_DATA.tramSchedule[key];
-        const period = isWeekend() ? blk.weekends : blk.weekdays;
-        return Object.entries(period)
-          .flatMap(([h,mins])=>mins.map(m=>`${pad(h)}:${pad(m)}`))
-          .sort();
+        const blk = SCHEDULE_DATA.tramSchedule[key] || {};
+        const period = weekend ? (blk.weekends||{}) : (blk.weekdays||{});
+
+        const arr = [];
+        for (const [h, mins] of Object.entries(period)) {
+          const hh = Number(h||0);
+          (mins||[]).forEach(m => arr.push(hh*60 + Number(m||0)));
+        }
+        return arr.sort((a,b)=>a-b);
       } else {
-        const key = id==='train-morning'
-          ? 'Nõmme → Tallinn'
-          : 'Tallinn → Nõmme';
-        const blk = SCHEDULE_DATA.trainSchedule[key];
-        const list = isWeekend() ? blk.weekends : blk.weekdays;
-        return list.slice().sort();
+        const key = routeId==='train-morning' ? 'Nõmme → Tallinn' : 'Tallinn → Nõmme';
+        const blk = SCHEDULE_DATA.trainSchedule[key] || {};
+        const list = (weekend ? blk.weekends : blk.weekdays) || [];
+        return list.map(t => hmToMin(toHM(t))).sort((a,b)=>a-b);
       }
     }
 
-    function generateUpcoming(id){
-      const times = getStaticTimes(id), now=getNowMin();
-      return times.map(t=>{
-        const [h,m]=t.split(':').map(Number);
-        let mins = h*60 + m; if(mins<now) mins+=1440;
-        return {time:t,diff:mins-now};
-      })
-      .filter(x=>x.diff<=windowDiff)
-      .sort((a,b)=>a.diff-b.diff);
+    // ── UPCOMING ACROSS MIDNIGHT ──────────────────────────────────────────
+    function generateUpcoming(routeId){
+      const now = new Date();
+      const todayIdx = now.getDay();      // 0..6
+      const nowMin   = getNowMin();
+      const maxDays  = Math.ceil(state.windowDiff/1440) + 1;
+
+      const out = [];
+      outer: for (let d=0; d<=maxDays; d++){
+        const dayIdx = (todayIdx + d) % 7;
+        const times  = getTimesForDay(routeId, dayIdx); // minutid 0..1439
+        for (const t of times){
+          let diff = d*1440 + t - nowMin;
+          if (d===0 && t < nowMin) continue;            // tänased minevikud välja
+          if (diff > state.windowDiff) break outer;
+          out.push({
+            time: hmToStr(Math.floor(t/60), t%60),
+            diff,
+            dayOffset: d, // 0=täna, 1=homme, ...
+            dow: dayIdx   // 0..6 (P,E,T,K,N,R,L)
+          });
+        }
+      }
+      return out;
     }
 
-    function pairDepartures(pId,sId,offset){
-      const prim=generateUpcoming(pId), sec=generateUpcoming(sId);
+    // ── PAIRING LOGIC (kasutab etteantud loendeid, mitte uuesti arvutust) ──
+    function pairDeparturesFromLists(prim, sec, offset){
       return prim.map((p,i)=>{
-        const nxt=prim[i+1]?.diff||Infinity;
-        const start=p.diff+offset, end=nxt+offset;
-        return {primary:p,secondary:sec.filter(x=>x.diff>=start&&x.diff<end)};
+        const nxt = prim[i+1]?.diff ?? Infinity;
+        const start = p.diff + offset;
+        const end   = nxt + offset;
+        return {
+          primary: p,
+          secondary: sec.filter(x => x.diff >= start && x.diff < end)
+        };
       });
     }
 
-    function formatCard(item,routeId){
+    // ── RENDERING ─────────────────────────────────────────────────────────
+    const DAY_LABELS = ['P','E','T','K','N','R','L'];
+
+    function formatCard(item, {isNext=false}={}){
       if(!item?.time) return '<div class="no-data">—</div>';
       const cls=['departure-card'];
       if(item.diff<=5) cls.push('soon');
-      if(item.time===generateUpcoming(routeId)[0]?.time) cls.push('next-departure');
+      if(isNext) cls.push('next-departure');
+
+      const chip = item.dayOffset>0
+        ? `<span class="day-chip">${item.dayOffset===1 ? 'Homme' : DAY_LABELS[item.dow]}</span>`
+        : '';
+
       return `<div class="${cls.join(' ')}">
-        <span class="departure-time">${item.time}</span>
+        <span class="departure-time">${item.time}${chip}</span>
         <span class="countdown">${item.diff} min</span>
       </div>`;
     }
 
     function render(){
-      const cont=document.getElementById('pairedSection');
-      const morning = currentDirection==='morning';
+      const morning = state.currentDirection==='morning';
       const pId = morning?'train-morning':'tram-evening';
       const sId = morning?'tram-morning':'train-evening';
-      const rows = pairDepartures(pId,sId,12);
+
+      const primList = generateUpcoming(pId);
+      const secList  = generateUpcoming(sId);
+      const rows     = pairDeparturesFromLists(primList, secList, state.transferOffsetMin);
+
+      const nextPrim = primList[0] ? { time: primList[0].time, dayOffset: primList[0].dayOffset } : null;
+      const nextSec  = secList[0]  ? { time: secList[0].time,  dayOffset: secList[0].dayOffset  } : null;
 
       let html=`<div class="paired-header">
         <div class="col">${morning?'<div class="route-icon train-icon">🚆</div>':'<div class="route-icon tram-icon">1</div>'}
@@ -234,42 +355,80 @@
         </div>
       </div><div class="paired-departures">`;
 
-      rows.forEach(r=> {
-        html += '<div class="paired-row">';
-        html += `<div class="paired-cell">${formatCard(r.primary,pId)}</div>`;
-        html += `<div class="paired-cell">${
-          r.secondary.length
-            ? r.secondary.map(s=>formatCard(s,sId)).join('')
-            : '<div class="no-data">—</div>'
-        }</div>`;
-        html += '</div>';
-      });
+      if(rows.length===0){
+        html += `<div class="no-data">Sobivaid väljumisi valitud aknas ei ole.</div>`;
+      } else {
+        rows.forEach(r=> {
+          const isNextPrim = nextPrim && r.primary.time===nextPrim.time && r.primary.dayOffset===nextPrim.dayOffset;
+          html += '<div class="paired-row">';
+          html += `<div class="paired-cell">${formatCard(r.primary,{isNext:isNextPrim})}</div>`;
+
+          if (r.secondary.length){
+            const secCards = r.secondary.map(s=>{
+              const isNext = nextSec && s.time===nextSec.time && s.dayOffset===nextSec.dayOffset;
+              return formatCard(s,{isNext});
+            }).join('');
+            html += `<div class="paired-cell">${secCards}</div>`;
+          } else {
+            html += `<div class="paired-cell"><div class="no-data">—</div></div>`;
+          }
+          html += '</div>';
+        });
+      }
 
       html += '</div>';
-      cont.innerHTML = html;
+      pairedSection.innerHTML = html;
+
+      // meta
+      const untilStr = (() => {
+        const last = [...primList, ...secList].sort((a,b)=>a.diff-b.diff).slice(-1)[0];
+        if(!last) return '';
+        const hours = Math.floor(state.windowDiff/60), mins = state.windowDiff%60;
+        return `Aken: järgmised ${hours}h ${mins?mins+'min':''} (kuni ${last.dayOffset? (last.dayOffset===1?'homme ':''):''}${last.time}).`;
+      })();
+      metaEl.textContent = untilStr;
     }
 
-    // toggles
-    document.getElementById('morningBtn').onclick = ()=>{
-      currentDirection='morning'; windowDiff=windowStep; render();
+    // ── UI EVENTS ──────────────────────────────────────────────────────────
+    morningBtn.onclick = ()=>{
+      state.currentDirection='morning'; state.windowDiff=state.windowStep; render();
       morningBtn.classList.add('active'); eveningBtn.classList.remove('active');
+      morningBtn.setAttribute('aria-selected','true'); eveningBtn.setAttribute('aria-selected','false');
     };
-    document.getElementById('eveningBtn').onclick = ()=>{
-      currentDirection='evening'; windowDiff=windowStep; render();
+    eveningBtn.onclick = ()=>{
+      state.currentDirection='evening'; state.windowDiff=state.windowStep; render();
       eveningBtn.classList.add('active'); morningBtn.classList.remove('active');
+      eveningBtn.setAttribute('aria-selected','true'); morningBtn.setAttribute('aria-selected','false');
     };
-    document.getElementById('loadMoreBtn').onclick = ()=>{
-      windowDiff+=windowStep; render();
+    loadMoreBtn.onclick = ()=>{
+      state.windowDiff += state.windowStep; render();
     };
+    updateBtn.onclick = loadFromSheetsAPI;
 
-    // clock
-    setInterval(()=>{
+    // ── CLOCK & AUTO TICK (re-render kord minutis) ─────────────────────────
+    function updateClock(){
       document.getElementById('currentTime').textContent =
         new Date().toLocaleTimeString('et-EE',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    },1000);
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
 
-    // initial render
-    render();
+    function scheduleTick(){
+      const now = new Date();
+      const msToNextMinute = (60 - now.getSeconds())*1000 - now.getMilliseconds();
+      setTimeout(()=>{
+        render();               // koondu minuti algusele
+        setInterval(render, 60_000);
+      }, Math.max(0, msToNextMinute));
+    }
+
+    // ── BOOTSTRAP ─────────────────────────────────────────────────────────
+    // proovi vahemälu → kohene render; siis tõmba võrgust ja salvesta cache
+    if(loadCache()) render();
+    else render(); // kuvab placeholderi/— kuni andmed käes
+    loadFromSheetsAPI();
+    scheduleTick();
   </script>
 </body>
 </html>
+
