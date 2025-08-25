@@ -303,17 +303,22 @@
     }
 
     // ── PAIRING LOGIC (kasutab etteantud loendeid, mitte uuesti arvutust) ──
-    function pairDeparturesFromLists(prim, sec, offset){
-      return prim.map((p,i)=>{
-        const nxt = prim[i+1]?.diff ?? Infinity;
-        const start = p.diff + offset;
-        const end   = nxt + offset;
-        return {
-          primary: p,
-          secondary: sec.filter(x => x.diff >= start && x.diff < end)
-        };
-      });
-    }
+   function pairDeparturesFromLists(prim, sec, offset){
+  return prim.map((p,i)=>{
+    // UUS: esimeses reas näita teise veeru väljumisi alates "päris praegusest"
+    // (mitte alles pärast primary+offset aega).
+    // Järgmistel ridadel jääb käitumine samaks.
+    const start = (i === 0) ? 0 : (p.diff + offset);
+
+    const nxt   = prim[i+1]?.diff ?? Infinity;
+    const end   = nxt + offset;
+
+    return {
+      primary: p,
+      secondary: sec.filter(x => x.diff >= start && x.diff < end)
+    };
+  });
+}
 
     // ── RENDERING ─────────────────────────────────────────────────────────
     const DAY_LABELS = ['P','E','T','K','N','R','L'];
