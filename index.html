@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SINNA & TAGASI</title>
 
-  <!-- FAVICON: inline SVG using the 🚆 emoji -->
+  <!-- FAVICON -->
   <link rel="icon" type="image/svg+xml"
     href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Ctext%20x='50%25'%20y='50%25'%20font-size='48'%20text-anchor='middle'%20dominant-baseline='central'%3E🚆%3C/text%3E%3C/svg%3E">
   <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
@@ -16,13 +16,17 @@
       --ink:#222; --ink-muted:#555;
       --card:#f8f9fa; --shadow:0 4px 15px rgba(0,0,0,.2);
       --accent:#667eea; --ok:#4CAF50; --warn:#FF9800; --rail:#2196F3;
+
+      /* FIX #1: pealkirja värv alati tume (ka dark-mode'is) */
+      --heading-ink:#1d1f23;
     }
     @media (prefers-color-scheme: dark){
       :root{
-        --ink:#e9e9e9; --ink-muted:#bbb;
-        --card:#1f2430; --shadow:0 6px 18px rgba(0,0,0,.4);
+        --ink:#e9e9e9; --ink-muted:#bbb; --card:#1f2430; --shadow:0 6px 18px rgba(0,0,0,.4);
+        --heading-ink:#1d1f23; /* hoia pealkiri ikka tume */
       }
     }
+
     *{margin:0;padding:0;box-sizing:border-box}
     body{
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;
@@ -37,22 +41,25 @@
 
     .direction-toggle{display:flex;justify-content:center;gap:10px;margin:20px 0;}
     .toggle-btn{
-      background:rgba(255,255,255,0.2);
-      border:2px solid white;color:white;
-      padding:10px 20px;border-radius:25px;cursor:pointer;font-weight:600;
+      background:rgba(255,255,255,0.2); border:2px solid white; color:white;
+      padding:10px 20px; border-radius:25px; cursor:pointer; font-weight:600;
       transition:background .2s, transform .05s;
     }
     .toggle-btn:active{ transform: scale(.98); }
-    .toggle-btn.active{background:white;color:var(--bg1); outline: none;}
+    .toggle-btn.active{background:white;color:var(--bg1); outline:none;}
     .toggle-btn[aria-disabled="true"]{opacity:.6;cursor:default;}
 
-    .paired-section{background:white;border-radius:12px;padding:20px;
-                    box-shadow:var(--shadow);margin-bottom:10px;}
-    .paired-header{display:grid;grid-template-columns:1fr 1fr;align-items:center;
-                   margin-bottom:15px;gap:12px;}
-    .paired-header .col{display:flex;align-items:center;gap:8px;}
-    .route-icon{width:28px;height:28px;border-radius:50%;display:flex;
-                align-items:center;justify-content:center;color:white;font-size:1rem;}
+    .paired-section{background:white;border-radius:12px;padding:20px;box-shadow:var(--shadow);margin-bottom:10px;}
+    .paired-header{display:grid;grid-template-columns:1fr 1fr;align-items:center;margin-bottom:15px;gap:12px;}
+    /* FIX #1: pealkirjad alati tumedad */
+    .paired-header .col{display:flex;align-items:center;gap:8px;color:var(--heading-ink) !important;}
+    .paired-header h3{color:var(--heading-ink) !important;font-weight:900;letter-spacing:.2px;}
+    /* FIX #2: mobiilis veidi suurem */
+    @media (max-width: 480px){
+      .paired-header h3{font-size:1.15rem;letter-spacing:.2px;}
+    }
+
+    .route-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:1rem;}
     .train-icon{background:var(--rail);}
     .tram-icon{background:var(--warn);}
 
@@ -60,10 +67,8 @@
     .paired-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
     .paired-cell{display:flex;flex-direction:column;gap:6px;}
     .departure-card{
-      background:var(--card);border-radius:8px;padding:8px;
-      border-left:4px solid var(--accent);display:flex;
-      justify-content:space-between;align-items:center;
-      min-height:40px;
+      background:var(--card);border-radius:8px;padding:8px;border-left:4px solid var(--accent);
+      display:flex;justify-content:space-between;align-items:center;min-height:40px;
     }
     .departure-card.next-departure{border-left-color:var(--ok);background:rgba(76,175,80,.12);}
     .departure-card.soon{border-left-color:var(--warn);background:rgba(255,152,0,.12);}
@@ -73,8 +78,7 @@
 
     .day-chip{
       font-size:.7rem; padding:2px 6px; border-radius:6px;
-      background:rgba(102,126,234,.15); color:var(--accent); font-weight:600;
-      line-height:1.2;
+      background:rgba(102,126,234,.15); color:var(--accent); font-weight:600; line-height:1.2;
     }
 
     .btnbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;}
@@ -83,7 +87,7 @@
       background:var(--accent); color:white; cursor:pointer; font-weight:600;
     }
     .load-more[disabled], .update-btn[disabled]{opacity:.6;cursor:default}
-    .meta{color:white;opacity:.85;font-size:.9rem;margin-top:6px;text-align:center;}
+    .meta{color:white;opacity:.9;font-size:.9rem;margin-top:8px;text-align:center;}
   </style>
 </head>
 <body>
@@ -94,7 +98,7 @@
     </div>
 
     <div class="direction-toggle" role="tablist" aria-label="Suunavalik">
-      <button id="morningBtn" type="button" class="toggle-btn active" role="tab" aria-selected="true" aria-controls="pairedSection">🌅 Sinna</button>
+      <button id="morningBtn" type="button" class="toggle-btn" role="tab" aria-selected="false" aria-controls="pairedSection">🌅 Sinna</button>
       <button id="eveningBtn" type="button" class="toggle-btn" role="tab" aria-selected="false" aria-controls="pairedSection">🌆 Tagasi</button>
     </div>
 
@@ -110,19 +114,17 @@
   <script>
     // ── UTILS & STATE ───────────────────────────────────────────────────────
     const pad = n => n.toString().padStart(2,'0');
-    const getNowMin = () => { const d=new Date(); return d.getHours()*60 + d.getMinutes(); };
-    const isWeekend = () => [0,6].includes(new Date().getDay()); // tänane
-    const isWeekendDay = d => d===0 || d===6; // suvalise päeva jaoks
-
-    // HM utils
-    const toHM = s => { const [h,m]=(s||'').split(':').map(Number); return [h||0,m||0]; };
+    const toHM = s => { const [h,m]=(s||'0:0').split(':').map(Number); return [h||0,m||0]; };
     const hmToStr = (h,m) => `${pad(h)}:${pad(m)}`;
     const hmToMin = ([h,m]) => h*60 + m;
+    const getNowMin = () => { const d=new Date(); return d.getHours()*60 + d.getMinutes(); };
+    const isWeekendDay = d => d===0 || d===6; // 0=P, 6=L
+    const DAY_LABELS = ['P','E','T','K','N','R','L'];
 
     let state = {
-      windowDiff: 120,      // mitu minutit ette näitame
-      windowStep: 120,      // +2h samm
-      currentDirection: 'morning', // 'morning' | 'evening'
+      windowDiff: 120,      // min ette
+      windowStep: 120,      // +2h
+      currentDirection: 'morning', // setDefaultDirectionByTime() uuendab
       transferOffsetMin: 12
     };
 
@@ -133,18 +135,6 @@
     const updateBtn   = document.getElementById('updateBtn');
     const pairedSection = document.getElementById('pairedSection');
     const metaEl = document.getElementById('meta');
-
-    // initial placeholders
-    const SCHEDULE_DATA = {
-      tramSchedule: {
-        'Balti Jaam → Tallinna Ülikool': { weekdays:{}, weekends:{} },
-        'Tallinna Ülikool → Balti Jaam': { weekdays:{}, weekends:{} }
-      },
-      trainSchedule: {
-        'Nõmme → Tallinn': { weekdays:[], weekends:[] },
-        'Tallinn → Nõmme': { weekdays:[], weekends:[] }
-      }
-    };
 
     // ── SHEETS API CONFIG ─────────────────────────────────────────────────
     const SPREADSHEET_ID = '1xawYwxhTXUKDulx5TafuCqo2c7exE2nQrxHNQg7rWuY';
@@ -161,23 +151,31 @@
       r_e_wknd: 'Train_BJ-N_Weekends!A2:A150',
     };
 
-    // ── CACHE ──────────────────────────────────────────────────────────────
+    // ── DATA & CACHE ──────────────────────────────────────────────────────
+    const SCHEDULE_DATA = {
+      tramSchedule: {
+        'Balti Jaam → Tallinna Ülikool': { weekdays:{}, weekends:{} },
+        'Tallinna Ülikool → Balti Jaam': { weekdays:{}, weekends:{} }
+      },
+      trainSchedule: {
+        'Nõmme → Tallinn': { weekdays:[], weekends:[] },
+        'Tallinn → Nõmme': { weekdays:[], weekends:[] }
+      }
+    };
+
     const CACHE_KEY = 'sinna-tagasi-schedule-v1';
-    function saveCache(){
-      try{ localStorage.setItem(CACHE_KEY, JSON.stringify(SCHEDULE_DATA)); }catch(_){}
-    }
+    function saveCache(){ try{ localStorage.setItem(CACHE_KEY, JSON.stringify(SCHEDULE_DATA)); }catch{} }
     function loadCache(){
       try{
         const raw = localStorage.getItem(CACHE_KEY);
         if(!raw) return false;
         Object.assign(SCHEDULE_DATA, JSON.parse(raw));
         return true;
-      }catch(_){ return false; }
+      }catch{ return false; }
     }
 
-    // ── LOAD & UPDATE (batchGet + robust parsing) ──────────────────────────
+    // ── LOAD FROM SHEETS (batchGet) ───────────────────────────────────────
     async function loadFromSheetsAPI() {
-      const prevUpdateText = updateBtn.textContent;
       updateBtn.disabled = true; updateBtn.setAttribute('aria-disabled','true');
       loadMoreBtn.disabled = true; loadMoreBtn.setAttribute('aria-disabled','true');
       updateBtn.textContent = 'Värskendan…';
@@ -205,53 +203,44 @@
             return m;
           },{});
 
-        // trammid (grupeeritud tunnipõhiselt)
+        // trammid (tunni-grupid)
         SCHEDULE_DATA.tramSchedule['Balti Jaam → Tallinna Ülikool'] = {
-          weekdays: buildHourMap(t_m_wkdy),
-          weekends: buildHourMap(t_m_wknd)
+          weekdays: buildHourMap(t_m_wkdy), weekends: buildHourMap(t_m_wknd)
         };
         SCHEDULE_DATA.tramSchedule['Tallinna Ülikool → Balti Jaam'] = {
-          weekdays: buildHourMap(t_e_wkdy),
-          weekends: buildHourMap(t_e_wknd)
+          weekdays: buildHourMap(t_e_wkdy), weekends: buildHourMap(t_e_wknd)
         };
 
         // rongid (täisnimekirjad)
         const normalizeTimes = (list=[]) =>
-          list
-            .map(s => {
-              const [h,m] = toHM(String(s));
-              return hmToStr(h,m);
-            })
-            .sort((a,b)=>hmToMin(toHM(a))-hmToMin(toHM(b)));
+          list.map(s => { const [h,m] = toHM(String(s)); return hmToStr(h,m); })
+              .sort((a,b)=>hmToMin(toHM(a))-hmToMin(toHM(b)));
 
         SCHEDULE_DATA.trainSchedule['Nõmme → Tallinn'] = {
-          weekdays: normalizeTimes(r_m_wkdy),
-          weekends: normalizeTimes(r_m_wknd)
+          weekdays: normalizeTimes(r_m_wkdy), weekends: normalizeTimes(r_m_wknd)
         };
         SCHEDULE_DATA.trainSchedule['Tallinn → Nõmme'] = {
-          weekdays: normalizeTimes(r_e_wkdy),
-          weekends: normalizeTimes(r_e_wknd)
+          weekdays: normalizeTimes(r_e_wkdy), weekends: normalizeTimes(r_e_wknd)
         };
 
         saveCache();
-        render(); // värskenda vaadet
+        render();
         updateBtn.textContent = 'Uuendatud ✅';
         metaEl.textContent = 'Graafik edukalt värskendatud.';
       } catch(err) {
         console.error(err);
         updateBtn.textContent = 'Viga, proovi uuesti';
-        metaEl.textContent = 'Viga andmete laadimisel. Kasutan viimast vahemälus olevat graafikut (kui olemas).';
+        metaEl.textContent = 'Viga andmete laadimisel. Kasutan viimast vahemälu (kui olemas).';
       } finally {
         setTimeout(()=>{
           updateBtn.disabled = false; updateBtn.removeAttribute('aria-disabled');
           loadMoreBtn.disabled = false; loadMoreBtn.removeAttribute('aria-disabled');
           updateBtn.textContent = 'Uuenda väljumised';
-        }, 1800);
+        }, 1500);
       }
     }
 
-    // ── DAY-AWARE TIME FETCH PER DAY ───────────────────────────────────────
-    // tagastab minutid 0..1439, sorteeritult konkreetse päeva tüübi järgi
+    // ── TIMES PER DAY (day-aware; 0..1439 min) ────────────────────────────
     function getTimesForDay(routeId, dayIndex){
       const weekend = isWeekendDay(dayIndex);
 
@@ -261,7 +250,6 @@
           : 'Tallinna Ülikool → Balti Jaam';
         const blk = SCHEDULE_DATA.tramSchedule[key] || {};
         const period = weekend ? (blk.weekends||{}) : (blk.weekdays||{});
-
         const arr = [];
         for (const [h, mins] of Object.entries(period)) {
           const hh = Number(h||0);
@@ -279,60 +267,41 @@
     // ── UPCOMING ACROSS MIDNIGHT ──────────────────────────────────────────
     function generateUpcoming(routeId){
       const now = new Date();
-      const todayIdx = now.getDay();      // 0..6
+      const todayIdx = now.getDay();
       const nowMin   = getNowMin();
       const maxDays  = Math.ceil(state.windowDiff/1440) + 1;
 
       const out = [];
       outer: for (let d=0; d<=maxDays; d++){
         const dayIdx = (todayIdx + d) % 7;
-        const times  = getTimesForDay(routeId, dayIdx); // minutid 0..1439
+        const times  = getTimesForDay(routeId, dayIdx);
         for (const t of times){
           let diff = d*1440 + t - nowMin;
-          if (d===0 && t < nowMin) continue;            // tänased minevikud välja
+          if (d===0 && t < nowMin) continue;
           if (diff > state.windowDiff) break outer;
-          out.push({
-            time: hmToStr(Math.floor(t/60), t%60),
-            diff,
-            dayOffset: d, // 0=täna, 1=homme, ...
-            dow: dayIdx   // 0..6 (P,E,T,K,N,R,L)
-          });
+          out.push({ time: hmToStr(Math.floor(t/60), t%60), diff, dayOffset: d, dow: dayIdx });
         }
       }
       return out;
     }
 
-    // ── PAIRING LOGIC (kasutab etteantud loendeid, mitte uuesti arvutust) ──
-   function pairDeparturesFromLists(prim, sec, offset){
-  return prim.map((p,i)=>{
-    // UUS: esimeses reas näita teise veeru väljumisi alates "päris praegusest"
-    // (mitte alles pärast primary+offset aega).
-    // Järgmistel ridadel jääb käitumine samaks.
-    const start = (i === 0) ? 0 : (p.diff + offset);
+    // ── PAIRING (teise veeru algus: primary.diff + offset) ────────────────
+    function pairDeparturesFromLists(prim, sec, offset){
+      return prim.map((p,i)=>{
+        const nextPrim = prim[i+1]?.diff ?? Infinity;
+        const start = Math.max(0, p.diff + offset);     // realistlik jõudmisaeg
+        const end   = nextPrim + offset;
+        return { primary: p, secondary: sec.filter(x => x.diff >= start && x.diff < end) };
+      });
+    }
 
-    const nxt   = prim[i+1]?.diff ?? Infinity;
-    const end   = nxt + offset;
-
-    return {
-      primary: p,
-      secondary: sec.filter(x => x.diff >= start && x.diff < end)
-    };
-  });
-}
-
-    // ── RENDERING ─────────────────────────────────────────────────────────
-    const DAY_LABELS = ['P','E','T','K','N','R','L'];
-
+    // ── RENDER ─────────────────────────────────────────────────────────────
     function formatCard(item, {isNext=false}={}){
       if(!item?.time) return '<div class="no-data">—</div>';
       const cls=['departure-card'];
       if(item.diff<=5) cls.push('soon');
       if(isNext) cls.push('next-departure');
-
-      const chip = item.dayOffset>0
-        ? `<span class="day-chip">${item.dayOffset===1 ? 'Homme' : DAY_LABELS[item.dow]}</span>`
-        : '';
-
+      const chip = item.dayOffset>0 ? `<span class="day-chip">${item.dayOffset===1?'Homme':DAY_LABELS[item.dow]}</span>` : '';
       return `<div class="${cls.join(' ')}">
         <span class="departure-time">${item.time}${chip}</span>
         <span class="countdown">${item.diff} min</span>
@@ -352,13 +321,25 @@
       const nextSec  = secList[0]  ? { time: secList[0].time,  dayOffset: secList[0].dayOffset  } : null;
 
       let html=`<div class="paired-header">
-        <div class="col">${morning?'<div class="route-icon train-icon">🚆</div>':'<div class="route-icon tram-icon">1</div>'}
-          <h3>${morning?'Rong':'Tramm'}</h3>
-        </div>
-        <div class="col">${morning?'<div class="route-icon tram-icon">1</div>':'<div class="route-icon train-icon">🚆</div>'}
-          <h3>${morning?'Tramm':'Rong'}</h3>
-        </div>
+        <div class="col">${morning?'<div class="route-icon train-icon">🚆</div>':'<div class="route-icon tram-icon">1</div>'}<h3>${morning?'Rong':'Tramm'}</h3></div>
+        <div class="col">${morning?'<div class="route-icon tram-icon">1</div>':'<div class="route-icon train-icon">🚆</div>'}<h3>${morning?'Tramm':'Rong'}</h3></div>
       </div><div class="paired-departures">`;
+
+      // "enne esimest" teise veeru väljumised
+      if (primList.length){
+        const cutoff = primList[0].diff + state.transferOffsetMin;
+        const preSecondary = secList.filter(x => x.diff >= 0 && x.diff < cutoff);
+        if (preSecondary.length){
+          html += '<div class="paired-row">';
+          html += `<div class="paired-cell"><div class="no-data">—</div></div>`;
+          const secCards = preSecondary.map(s=>{
+            const isNext = nextSec && s.time===nextSec.time && s.dayOffset===nextSec.dayOffset;
+            return formatCard(s,{isNext});
+          }).join('');
+          html += `<div class="paired-cell">${secCards}</div>`;
+          html += '</div>';
+        }
+      }
 
       if(rows.length===0){
         html += `<div class="no-data">Sobivaid väljumisi valitud aknas ei ole.</div>`;
@@ -367,7 +348,6 @@
           const isNextPrim = nextPrim && r.primary.time===nextPrim.time && r.primary.dayOffset===nextPrim.dayOffset;
           html += '<div class="paired-row">';
           html += `<div class="paired-cell">${formatCard(r.primary,{isNext:isNextPrim})}</div>`;
-
           if (r.secondary.length){
             const secCards = r.secondary.map(s=>{
               const isNext = nextSec && s.time===nextSec.time && s.dayOffset===nextSec.dayOffset;
@@ -385,13 +365,9 @@
       pairedSection.innerHTML = html;
 
       // meta
-      const untilStr = (() => {
-        const last = [...primList, ...secList].sort((a,b)=>a.diff-b.diff).slice(-1)[0];
-        if(!last) return '';
-        const hours = Math.floor(state.windowDiff/60), mins = state.windowDiff%60;
-        return `Aken: järgmised ${hours}h ${mins?mins+'min':''} (kuni ${last.dayOffset? (last.dayOffset===1?'homme ':''):''}${last.time}).`;
-      })();
-      metaEl.textContent = untilStr;
+      const last = [...primList, ...secList].sort((a,b)=>a.diff-b.diff).slice(-1)[0];
+      const hours = Math.floor(state.windowDiff/60), mins = state.windowDiff%60;
+      metaEl.textContent = `Aken: ${hours}h ${mins?mins+'min':''}${last?` (kuni ${last.dayOffset? (last.dayOffset===1?'homme ':''):''}${last.time})`:''}.`;
     }
 
     // ── UI EVENTS ──────────────────────────────────────────────────────────
@@ -405,35 +381,48 @@
       eveningBtn.classList.add('active'); morningBtn.classList.remove('active');
       eveningBtn.setAttribute('aria-selected','true'); morningBtn.setAttribute('aria-selected','false');
     };
-    loadMoreBtn.onclick = ()=>{
-      state.windowDiff += state.windowStep; render();
-    };
+    loadMoreBtn.onclick = ()=>{ state.windowDiff += state.windowStep; render(); };
     updateBtn.onclick = loadFromSheetsAPI;
 
-    // ── CLOCK & AUTO TICK (re-render kord minutis) ─────────────────────────
+    // ── CLOCK & MINUTE TICK ────────────────────────────────────────────────
     function updateClock(){
       document.getElementById('currentTime').textContent =
         new Date().toLocaleTimeString('et-EE',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
     }
-    updateClock();
-    setInterval(updateClock, 1000);
+    updateClock(); setInterval(updateClock, 1000);
 
     function scheduleTick(){
       const now = new Date();
       const msToNextMinute = (60 - now.getSeconds())*1000 - now.getMilliseconds();
-      setTimeout(()=>{
-        render();               // koondu minuti algusele
-        setInterval(render, 60_000);
-      }, Math.max(0, msToNextMinute));
+      setTimeout(()=>{ render(); setInterval(render, 60_000); }, Math.max(0, msToNextMinute));
+    }
+
+    // ── DEFAULT DIRECTION BY TIME ──────────────────────────────────────────
+    function setDefaultDirectionByTime(){
+      const hour = new Date().getHours();
+      state.currentDirection = (hour < 13) ? 'morning' : 'evening';
+
+      if (state.currentDirection === 'morning'){
+        morningBtn.classList.add('active'); eveningBtn.classList.remove('active');
+        morningBtn.setAttribute('aria-selected','true'); eveningBtn.setAttribute('aria-selected','false');
+      } else {
+        eveningBtn.classList.add('active'); morningBtn.classList.remove('active');
+        eveningBtn.setAttribute('aria-selected','true'); morningBtn.setAttribute('aria-selected','false');
+      }
     }
 
     // ── BOOTSTRAP ─────────────────────────────────────────────────────────
-    // proovi vahemälu → kohene render; siis tõmba võrgust ja salvesta cache
-    if(loadCache()) render();
-    else render(); // kuvab placeholderi/— kuni andmed käes
-    loadFromSheetsAPI();
-    scheduleTick();
+    (function boot(){
+      // sea vaikimisi suund
+      setDefaultDirectionByTime();
+
+      // proovi vahemälu → kohene render; siis tõmba võrgust ja salvesta cache
+      const hadCache = loadCache();
+      if(hadCache) render(); else pairedSection.innerHTML = '<div class="no-data">Laen graafikut…</div>';
+
+      loadFromSheetsAPI();
+      scheduleTick();
+    })();
   </script>
 </body>
 </html>
-
